@@ -1,4 +1,4 @@
-c1884b55c255be23faf1acc0536f6a46 *DESCRIPTION
+f31f1d4998c9c3a484e21269ca3aa35a *DESCRIPTION
 799e9d00f9145771042200970c01a9c6 *NAMESPACE
 a3ad5bea97ccd4b452fabaa9b11199e7 *R/CPP.R
 5caf90df5ddae9c92504700a093110c6 *R/CoMiRe.R
@@ -10,7 +10,7 @@ ecc49fc6709e77b5ea75d9565989d70a *R/RcppExports.R
 5310362e014dd266fff12b6bbd74f1a2 *R/comire.gibbs.continuous.confunder.R
 5697f78a95df8cd89c6c48c8689a3cdb *R/comire.gibbs.continuous.confunders.R
 2a9c3877defee8b8ef4c03538dc97e3b *R/comire.internal.R
-1d28cb9b530943205cb36bf7756bfb7e *build/partial.rdb
+862f324175c1ad6d9b14b1b812fd9077 *build/partial.rdb
 cc5693ceddefb6d2d0e71707346c2e55 *data/CPP.RData
 5117309634b5280f8a87d8adcb559683 *man/BMD.Rd
 f97bb7a82832d3627ea6470abcf322db *man/CPP.Rd
