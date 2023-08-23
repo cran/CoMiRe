@@ -134,16 +134,16 @@ predict_new_z <- function(fit, y, z.val){
 #' @importFrom splines2 iSpline
 #' @importFrom stats pnorm rbinom
 #' @importFrom KernSmooth locpoly
-#' @importFrom NonpModelCheck localpoly.reg
 #' @export 
 #' 
-#' @usage post.pred.check(y, x, z, fit, mcmc, J=10, H=10, a, max.x=max(x), 
+#' @usage post.pred.check(y, x, fit, mcmc, J=10, H=10, a, max.x=max(x), 
 #' xlim=c(0, max(x)), bandwidth = 20, oneevery = 20)
 #'
 #' @title Posterior predictive check plot
 #' 
 #' @description A plot for an object of \code{classCoMiRe} class. The plot is a goodness-of-fit assessment of CoMiRe model. 
-#' If \code{family = 'continuous'}, a smoothed empirical estimate of F(a|x,z) = pr(y < a | x,z) is computed from the observed data (black line) 
+#' Since Version 0.8 if \code{z} is provided into the \code{fit} object, an error message is returned.
+#' If \code{family = 'continuous'}, a smoothed empirical estimate of F(a|x) = pr(y < a | x) is computed from the observed data (black line) 
 #' and from some of the data sets simulated from the posterior predictive distribution in  the \code{fit} object (grey lines).
 #' If \code{family = 'binary'}, a smoothed empirical estimate of the proportion of events (black line) and of the smoothed empirical 
 #' proportion of data simulated from the posterior predictive distribution in the \code{fit} object (grey lines). 
@@ -151,7 +151,6 @@ predict_new_z <- function(fit, y, z.val){
 #'  
 #' @param y numeric vector for the response used in \code{comire.gibbs}
 #' @param x numeric vector for the covariate relative to the dose of exposure used in \code{comire.gibbs}
-#' @param z optional numeric vector or matrix for the confounding covariates.
 #' @param fit the output of \code{comire.gibbs} opportunely trasformed in \code{classCoMiRe} class
 #' @param mcmc a list giving the MCMC parameters
 #' @param J parameter controlling the number of elements of the I-spline basis
@@ -207,13 +206,13 @@ predict_new_z <- function(fit, y, z.val){
 #' }
 #' }
 
-post.pred.check <- function(y, x, z, fit, mcmc, J=10, H=10, a, max.x=max(x), 
+post.pred.check <- function(y, x, fit, mcmc, J=10, H=10, a, max.x=max(x), 
                             xlim=c(0, max(x)), bandwidth=20, oneevery = 20)
 {
   if(oneevery>(mcmc$nrep/mcmc$thin)) stop(paste("Too few MCMC iterations to print one every", oneevery, "iterations"))
+  if(!is.null(fit$z))stop(paste("Posterior predictive checks are not available if !is.null(z)"))
   ggplot2::theme_set(ggplot2::theme_bw())
   if(!fit$bin){
-    if(is.null(fit$z)){
       index <- c((mcmc$nb+1):(mcmc$nrep+mcmc$nb))[1:((mcmc$nrep)/mcmc$thin)*mcmc$thin]
       knots <- seq(min(x)+1, max.x, length=J-3)
       phi <- function(x) splines2::iSpline(x, df=3, knots = knots, Boundary.knots=c(0,max.x+1), intercept = FALSE)
@@ -247,103 +246,6 @@ post.pred.check <- function(y, x, z, fit, mcmc, J=10, H=10, a, max.x=max(x),
         ggplot2::geom_point(data=data.frame(x, zero=rep(0,length(x))), ggplot2::aes(.data$x, .data$zero), alpha=1, cex=.5, pch="|", na.rm=TRUE) 
       
       ppc + ggplot2::coord_cartesian(ylim=c(0,1), xlim=xlim) 
-      
-    }
-    else {
-      if(fit$univariate){
-        index <- c((mcmc$nb+1):(mcmc$nrep+mcmc$nb))[1:((mcmc$nrep)/mcmc$thin)*mcmc$thin]
-        knots <- seq(min(x)+1, max.x, length=J-3)
-        phi <- function(x) splines2::iSpline(x, df=3, knots = knots, Boundary.knots=c(0,max.x+1), intercept = FALSE)
-        res <- rep(NA, length(index))
-        
-        tailp.mcmc2 <- function(i, pi0, th0, tau0, th1, tau1, w, ga, phi_x)
-        {
-          beta_x <-  as.double(phi_x %*% w[i,])
-          res <-  beta_x * stats::pnorm(a, th1[i]+ga[i]*fit$z, 1/sqrt(tau1[i]))
-          
-          for(h in 1:ncol(pi0))
-          {
-            res <- res + (1-beta_x) * pi0[i,h] * stats::pnorm(a, th0[i,h]+ga[i]*fit$z , 1/sqrt(tau0[i,h]))     
-          }
-          
-          below <- stats::rbinom(length(res), 1, res) 
-          smoothed <- NonpModelCheck::localpoly.reg( X=as.matrix(cbind(x,fit$z)), Y=below, 
-                                     points=as.matrix(cbind(seq(0, max.x, length=100), 
-                                                            seq(min(fit$z), max(fit$z), length=100))),
-                                     bandwidth = rep(bandwidth, 2), degree.pol = 0)$predicted
-        }
-        
-        belowa.comire <- sapply(index, tailp.mcmc2, fit$mcmc$nu0, fit$mcmc$th0, fit$mcmc$tau0,
-                                fit$mcmc$th1, fit$mcmc$tau1, fit$mcmc$w, fit$mcmc$ga, phi(x))
-        
-        belowa.true <- NonpModelCheck::localpoly.reg( X=as.matrix(cbind(x,fit$z)), Y=y<a, 
-                                      points=as.matrix(cbind(seq(0, max.x, length=100), 
-                                                             seq(min(fit$z), max(fit$z), length=100))), 
-                                      bandwidth=rep(bandwidth,2), degree.pol = 0)$predicted
-       
-        ppc.data <- data.frame(cbind(x=seq(0,max.x, length=100),
-                                     Fx=c(c(belowa.comire[,1:(((mcmc$nrep)/mcmc$thin)/oneevery)*oneevery])), 
-                                     repl=c(rep(1:length(1:(((mcmc$nrep)/mcmc$thin)/oneevery)*oneevery),each=100))) )
-        
-        ppc <-  ggplot2::ggplot(ppc.data, ggplot2::aes(x=.data$x, y=.data$Fx)) + 
-          ggplot2::geom_line(alpha=0.25, ggplot2::aes(group=factor(.data$repl)), col="grey") +
-          ggplot2::geom_line(data=data.frame(x=seq(0,max.x, length=100), y=belowa.true), ggplot2::aes(x=.data$x, y=.data$y), col=1)+
-          ggplot2::labs(x = "", y = expression(F(a *"| x,z")*" | data")) +
-          ggplot2::geom_point(data=data.frame(x, zero=rep(0,length(x))), ggplot2::aes(.data$x, .data$zero), alpha=1, cex=.5, pch="|", na.rm=TRUE) 
-        
-        ppc + ggplot2::coord_cartesian(ylim=c(0,1), xlim=xlim)
-
-      }
-      else{
-        index <- c((mcmc$nb+1):(mcmc$nrep+mcmc$nb))[1:((mcmc$nrep)/mcmc$thin)*mcmc$thin]
-        knots <- seq(min(x)+1, max.x, length=J-3)
-        phi <- function(x) splines2::iSpline(x, df=3, knots = knots, Boundary.knots=c(0,max.x+1), intercept = FALSE)
-        res <- rep(NA, length(index))
-        
-        tailp.mcmc3 <- function(i, pi0, th0, tau0, th1, tau1, w, ga, phi_x)
-        {
-          
-          beta_x <-  as.double(phi_x %*% w[i,])
-          res <-  beta_x * stats::pnorm(a, th1[i]+crossprod(t(fit$z), ga[i,]), 1/sqrt(tau1[i]))
-          
-          for(h in 1:ncol(pi0))
-          {
-            res <- res + (1-beta_x) * pi0[i,h] * stats::pnorm(a, th0[i,h]+crossprod(t(fit$z), ga[i,]) , 1/sqrt(tau0[i,h]))     
-          }
-          
-          below <- stats::rbinom(length(res), 1, res) 
-          
-          p <- ncol(fit$z)
-          z.points<- matrix(NA, nrow=100, ncol=p)
-          for(j in 1:p){
-            z.points[,j]<- seq(min(fit$z[,j]), max(fit$z[,j]), length=100)
-          }
-          smoothed <- NonpModelCheck::localpoly.reg( X=as.matrix(cbind(x,fit$z)), Y=below, 
-                                     points=as.matrix(cbind(seq(0, max.x, length=100), z.points)),
-                                     bandwidth = rep(bandwidth, p+1), degree.pol = 0)$predicted
-        }
-        
-        belowa.comire <- sapply(index, tailp.mcmc3, fit$mcmc$nu0, fit$mcmc$th0, fit$mcmc$tau0,
-                      fit$mcmc$th1, fit$mcmc$tau1, fit$mcmc$w, fit$mcmc$ga, phi(x))
-        points <- matrix(NA, ncol=ncol(fit$z), nrow=100)
-        for(j in 1:ncol(fit$z)) points[,j]<- seq(min(fit$z[,j]), max(fit$z[,j]), length=100)
-        belowa.true <- NonpModelCheck::localpoly.reg(as.matrix(cbind(x,fit$z)), Y=y<a, 
-                                       points=as.matrix(cbind(seq(0, max.x, length=100), points)), 
-                                       bandwidth=rep(bandwidth,(ncol(fit$z))+1), degree.pol = 0)$predicted
-        
-        ppc.data <- data.frame(cbind(x=seq(0,max.x, length=100),
-                                     Fx=c(c(belowa.comire[,1:(((mcmc$nrep)/mcmc$thin)/oneevery)*oneevery])), 
-                                     repl=c(rep(1:length(1:(((mcmc$nrep)/mcmc$thin)/oneevery)*oneevery),each=100))))
-        ppc <-  ggplot2::ggplot(ppc.data, ggplot2::aes(x=.data$x, y=.data$Fx)) + 
-          ggplot2::geom_line(alpha=0.25, ggplot2::aes(group=factor(.data$repl)), col="grey") +
-          ggplot2::labs(x = "", y = expression(F(a*";x,z")*" | data")) +
-          ggplot2::geom_point(data=data.frame(x, zero=rep(0,length(x))), 
-                              ggplot2::aes(.data$x, .data$zero), alpha=1, cex=.5, pch="|", na.rm=TRUE) +
-          ggplot2::geom_line(data=data.frame(x=seq(0,max.x, length=100), y=belowa.true), ggplot2::aes(x=.data$x, y=.data$y), col=1)
-        ppc + ggplot2::coord_cartesian(ylim=c(0,1), xlim=xlim) 
-        
-      }
-    }
   }
   else{
     index <- c((mcmc$nb+1):(mcmc$nrep+mcmc$nb))[1:((mcmc$nrep)/mcmc$thin)*mcmc$thin]

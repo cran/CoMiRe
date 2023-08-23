@@ -6,6 +6,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // labelling_b_C
 arma::vec labelling_b_C(arma::vec w, arma::mat phi, arma::vec f0i, arma::vec f1i);
 RcppExport SEXP _CoMiRe_labelling_b_C(SEXP wSEXP, SEXP phiSEXP, SEXP f0iSEXP, SEXP f1iSEXP) {

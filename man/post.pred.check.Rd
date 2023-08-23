@@ -4,15 +4,13 @@
 \alias{post.pred.check}
 \title{Posterior predictive check plot}
 \usage{
-post.pred.check(y, x, z, fit, mcmc, J=10, H=10, a, max.x=max(x), 
+post.pred.check(y, x, fit, mcmc, J=10, H=10, a, max.x=max(x), 
 xlim=c(0, max(x)), bandwidth = 20, oneevery = 20)
 }
 \arguments{
 \item{y}{numeric vector for the response used in \code{comire.gibbs}}
 
 \item{x}{numeric vector for the covariate relative to the dose of exposure used in \code{comire.gibbs}}
-
-\item{z}{optional numeric vector or matrix for the confounding covariates.}
 
 \item{fit}{the output of \code{comire.gibbs} opportunely trasformed in \code{classCoMiRe} class}
 
@@ -34,7 +32,8 @@ xlim=c(0, max(x)), bandwidth = 20, oneevery = 20)
 }
 \description{
 A plot for an object of \code{classCoMiRe} class. The plot is a goodness-of-fit assessment of CoMiRe model. 
-If \code{family = 'continuous'}, a smoothed empirical estimate of F(a|x,z) = pr(y < a | x,z) is computed from the observed data (black line) 
+Since Version 0.8 if \code{z} is provided into the \code{fit} object, an error message is returned.
+If \code{family = 'continuous'}, a smoothed empirical estimate of F(a|x) = pr(y < a | x) is computed from the observed data (black line) 
 and from some of the data sets simulated from the posterior predictive distribution in  the \code{fit} object (grey lines).
 If \code{family = 'binary'}, a smoothed empirical estimate of the proportion of events (black line) and of the smoothed empirical 
 proportion of data simulated from the posterior predictive distribution in the \code{fit} object (grey lines). 
